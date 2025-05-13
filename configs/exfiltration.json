@@ -1,0 +1,10 @@
+{
+  "ftp_exfil": {
+      "ftp_server": "10.100.2.100",
+      "ftp_port": 21,
+      "ftp_user": "goad",
+      "ftp_pass": "Goad77!",
+      "local_file": "payload.bin",
+      "remote_path": "/home/goad/uploaded_payload.bin"
+  }
+}

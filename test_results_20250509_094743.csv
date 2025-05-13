@@ -1,0 +1,11 @@
+Start,End,Test_case_name,executed_command,source_ip,source_hostname,dest_ip,dest_hostname,dest_port,Proxy,Result,comment
+,,exe_drop,Download with requests,192.168.1.177,ROOT,,,,,success,Saved to C:\Temp\testfile.exe
+2025-05-09T07:48:10.326388,2025-05-09T07:48:19.602634,exe_drop,Download with PowerShell,192.168.1.177,ROOT,,,,,success,
+2025-05-09T07:48:19.603633,2025-05-09T07:48:19.951620,exe_drop,Download with certutil,192.168.1.177,ROOT,,,,,failure,[WinError 5] Access is denied
+2025-05-09T07:48:19.952624,2025-05-09T07:48:20.016746,exe_drop,Download with bitsadmin,192.168.1.177,ROOT,,,,,failure,"BITSADMIN version 3.0
+BITS administration utility.
+(C) Copyright Microsoft Corp.
+
+Unable to add file - 0x80070057
+The parameter is incorrect."
+,,,Download testfile.exe,,,,,,,,

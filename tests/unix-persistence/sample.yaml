@@ -1,0 +1,15 @@
+test_case_name: "Test AT Command Execution"
+os_type: "unix"  # Can be 'unix' or 'windows'
+wsl: true  # Whether to use WSL for command execution
+log_commands: true  # Enable logging of all commands
+test_case:
+  name: "Test AT Command Execution"
+  description: "Test running an AT command to execute a script."
+  commands:
+    - name: "Create AT Command Script"
+      command: |
+        echo '#!/bin/bash' > /tmp/myscript.sh
+        echo 'echo "Script executed at $(date)" >> /tmp/script_output.log' >> /tmp/myscript.sh
+        chmod +x /tmp/myscript.sh  # Make it executable
+    - name: "Run AT Command"
+      command: "at now + 1 minute -f /tmp/myscript.sh"

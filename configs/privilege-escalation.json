@@ -1,0 +1,31 @@
+{
+  "mac_spoof":
+  {
+    "description": "Network interface MAC address spoofing",
+    "interface": "Ethernet0",
+    "mac_address": "00:1A:2B:3C:4D:5E",
+    "allowed_platforms": ["Windows", "Linux"],
+    "require_admin": true
+  },
+
+  "lolbas":
+  {
+    "lolbas_csv_path": "tests/privilege-escalation/utilities/lolbas.csv",
+    "exec_arg": "/?",
+    "timeout": 5,
+    "delay": 2
+  },
+  "ghost_dll": {
+    "search_paths": [
+      "C:\\Windows\\System32",
+      "C:\\Windows\\SysWOW64",
+      "C:\\Program Files",
+      "C:\\Program Files (x86)"
+    ],
+    "save_dlls": false,
+    "output_dir": "output/dll_hijack"
+  },
+  "impersonate": {
+     "require_admin": true
+  }
+}

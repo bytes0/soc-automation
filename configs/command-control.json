@@ -1,0 +1,25 @@
+{
+  "powershell_memory_execution": {
+    "url": "https://raw.githubusercontent.com/tomstryhn/PowerShell-InMemory-Execution/main/codesamples/VeryFriendlyCode.ps1",
+    "require_admin": false
+  },
+  "process_injection": {
+    "payload":        "tests/command_control/shellcode.bin",
+    "injector_path":  "tests/command-control/tools/ProcessInjection.exe",
+    "technique":      2,
+    "method":         "p"
+  },
+   "sharp-pick": {
+    "executable":  "tests/command-control/tools/SharpPick.exe",
+    "flag":        "-f",
+    "argument":    "C:\\Users\\leong\\Desktop\\Coding\\Python\\soc-auto-yaml\\tests\\command-control\\script.ps1"
+  },
+  "exe_drop": {
+    "url": "https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.5.6/npp.8.5.6.Installer.x64.exe",
+    "save_path": "C:\\Temp",
+    "output_name": "testfile.exe",
+    "proxy": null
+  }
+
+
+}

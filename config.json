@@ -1,0 +1,14 @@
+{
+  "categories": {
+    "exfiltration": {
+      "ftp": {
+        "description": "Upload files to an FTP server.",
+        "ftp_server": "10.100.2.100",
+        "ftp_username": "goad",
+        "ftp_password": "Goad77!",
+        "local_file": "file.txt",
+        "remote_path": "optional_remote_name.txt"
+      }
+    }
+  }
+}
