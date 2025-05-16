@@ -1,4 +1,3 @@
-# === gui.py ===
 import sys
 import os
 import csv
@@ -13,16 +12,15 @@ from PyQt5.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QPushButton, QTextEdit, QLabel,
     QFileDialog, QCheckBox, QStyleFactory, QHeaderView
 )
+from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtCore import pyqtSignal, Qt, QTimer
 
 from executor.runner import run_test_case
 from executor.BaseTest import BaseTest
 
-# Constants
-TIMESTAMP   = datetime.now().strftime('%Y%m%d_%H%M%S')
-SESSION_CSV = os.path.join(os.path.dirname(__file__),
-                           f'test_results_{TIMESTAMP}.csv')
-TESTS_DIR   = os.path.join(os.path.dirname(__file__), 'tests')
+TIMESTAMP = datetime.now().strftime('%Y%m%d_%H%M%S')
+SESSION_CSV = os.path.join(os.path.dirname(__file__), f'test_results_{TIMESTAMP}.csv')
+TESTS_DIR = os.path.join(os.path.dirname(__file__), 'tests')
 
 def process_worker(path, config_queue, result_queue):
     cfg = config_queue.get()
@@ -47,13 +45,12 @@ def process_worker(path, config_queue, result_queue):
         result_queue.put(f"🔖 Comment: {result.get('comment','')}")
         result_queue.put({'csv': result})
 
-    except Exception as e:
+    except Exception:
         import traceback
         result_queue.put(traceback.format_exc())
 
     finally:
         result_queue.put(None)
-
 
 class TestRunnerGUI(QWidget):
     log_signal = pyqtSignal(str)
@@ -65,12 +62,12 @@ class TestRunnerGUI(QWidget):
 
         os.environ['SESSION_CSV'] = SESSION_CSV
 
-        self.processes     = []
+        self.processes = []
         self.config_queues = []
-        self.result_queue  = multiprocessing.Queue()
-        self.pending       = 0
-        self.csv_fp        = None
-        self.csv_writer    = None
+        self.result_queue = multiprocessing.Queue()
+        self.pending = 0
+        self.csv_fp = None
+        self.csv_writer = None
 
         self._init_ui()
         self.log_signal.connect(self.output_box.append)
@@ -89,12 +86,25 @@ class TestRunnerGUI(QWidget):
         main_layout.addWidget(header)
 
         ctrl = QHBoxLayout()
+        # Dark mode toggle button
+        self.dark_mode_btn = QPushButton("🌙", self)
+        self.dark_mode_btn.setToolTip("Toggle Dark Mode")
+        self.dark_mode_btn.setCheckable(True)
+        self.dark_mode_btn.setFixedSize(32, 32)
+        self.dark_mode_btn.setStyleSheet(
+            "QPushButton { border: none; font-size: 18px; }"
+        )
+        self.dark_mode_btn.clicked.connect(self.toggle_dark_mode)
+        ctrl.addWidget(self.dark_mode_btn)
+
+        # Control buttons
         for name, slot, color in [
             ("Select All",   self.select_all,   "#28a745"),
             ("Deselect All", self.deselect_all, "#dc3545"),
             ("Run",          self.run_selected_tests, "#007bff"),
             ("Stop",         self.stop_tests,   "#ffc107"),
             ("Export CSV",   self.export_csv,   "#17a2b8"),
+            ("Clear Output", self.clear_output, "#6c757d"),
         ]:
             btn = QPushButton(name, self)
             btn.clicked.connect(slot)
@@ -108,6 +118,7 @@ class TestRunnerGUI(QWidget):
                 QPushButton:hover {{ background-color: {color}; }}
             """)
             ctrl.addWidget(btn)
+
         self.auto_close_cb = QCheckBox("Close on finish", self)
         ctrl.addWidget(self.auto_close_cb)
         ctrl.addStretch()
@@ -127,6 +138,43 @@ class TestRunnerGUI(QWidget):
 
         main_layout.addWidget(splitter)
 
+    def toggle_dark_mode(self):
+        app = QApplication.instance()
+        if self.dark_mode_btn.isChecked():
+            # Switch to light icon
+            self.dark_mode_btn.setText("☀️")
+            # Dark palette
+            dark_palette = QPalette()
+            dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
+            dark_palette.setColor(QPalette.WindowText, Qt.white)
+            dark_palette.setColor(QPalette.Base, QColor(35, 35, 35))
+            dark_palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+            dark_palette.setColor(QPalette.ToolTipBase, Qt.white)
+            dark_palette.setColor(QPalette.ToolTipText, Qt.white)
+            dark_palette.setColor(QPalette.Text, Qt.white)
+            dark_palette.setColor(QPalette.Button, QColor(53, 53, 53))
+            dark_palette.setColor(QPalette.ButtonText, Qt.white)
+            dark_palette.setColor(QPalette.BrightText, Qt.red)
+            dark_palette.setColor(QPalette.Link, QColor(42, 130, 218))
+            dark_palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+            dark_palette.setColor(QPalette.HighlightedText, Qt.black)
+            app.setPalette(dark_palette)
+            # Enhance checkbox/tree indicator visibility
+            style = """
+                QCheckBox::indicator { width: 20px; height: 20px; }
+                QCheckBox::indicator:checked { background-color: #66bb6a; border: 1px solid #66bb6a; }
+                QCheckBox::indicator:unchecked { background-color: #555; border: 1px solid #555; }
+                QTreeWidget::indicator:checked { background-color: #66bb6a; border: 1px solid #66bb6a; }
+                QTreeWidget::indicator:unchecked { background-color: #555; border: 1px solid #555; }
+            """
+            self.setStyleSheet(style)
+        else:
+            # Switch to dark icon
+            self.dark_mode_btn.setText("🌙")
+            # Restore default palette/styles
+            app.setPalette(app.style().standardPalette())
+            self.setStyleSheet("")
+
     def _ensure_csv(self):
         if self.csv_writer is None:
             first = not os.path.exists(SESSION_CSV)
@@ -144,13 +192,15 @@ class TestRunnerGUI(QWidget):
         cats = {}
         for root, _, files in os.walk(TESTS_DIR):
             cat = os.path.basename(root)
-            if cat == os.path.basename(TESTS_DIR): cat = "uncategorized"
+            if cat == os.path.basename(TESTS_DIR):
+                cat = "uncategorized"
             if cat not in cats:
                 top = QTreeWidgetItem(self.tree, [cat])
                 top.setFirstColumnSpanned(True)
                 cats[cat] = top
             for f in files:
-                if not (f.endswith('.py') or f.endswith('.yaml')): continue
+                if not (f.endswith('.py') or f.endswith('.yaml')):
+                    continue
                 path = os.path.join(root, f)
                 item = QTreeWidgetItem(cats[cat], [os.path.splitext(f)[0], ""])
                 item.setCheckState(1, Qt.Unchecked)
@@ -174,6 +224,10 @@ class TestRunnerGUI(QWidget):
                 else: c.setCheckState(1, Qt.Unchecked)
         recurse(self.tree.invisibleRootItem())
         self.log_signal.emit("✅ All deselected.")
+
+    def clear_output(self):
+        self.output_box.clear()
+        self.log_signal.emit("🧹 Output cleared.")
 
     def run_selected_tests(self):
         for p in self.processes:
@@ -199,7 +253,8 @@ class TestRunnerGUI(QWidget):
         for path in chosen:
             cfg = {}
             cfgp = os.path.splitext(path)[0] + '.json'
-            if os.path.exists(cfgp): cfg = json.load(open(cfgp))
+            if os.path.exists(cfgp):
+                cfg = json.load(open(cfgp))
             cq = multiprocessing.Queue(); cq.put(cfg)
             self.config_queues.append(cq)
             p = multiprocessing.Process(target=process_worker, args=(path, cq, self.result_queue))
@@ -233,7 +288,8 @@ class TestRunnerGUI(QWidget):
                 self.log_signal.emit(str(msg))
 
     def export_csv(self):
-        dest, _ = QFileDialog.getSaveFileName(self, "Export CSV", os.getcwd(), "CSV Files (*.csv)")
+        dest, _ = QFileDialog.getSaveFileName(
+            self, "Export CSV", os.getcwd(), "CSV Files (*.csv)")
         if dest:
             shutil.copy(SESSION_CSV, dest)
             self.log_signal.emit(f"✅ Exported to {dest}")

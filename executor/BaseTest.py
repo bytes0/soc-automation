@@ -1,23 +1,24 @@
+from datetime import datetime
 import os
-import csv
-import json
 import time
+import csv
 import logging
 import functools
 import subprocess
 import platform
 import socket
-from datetime import datetime
+import json
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Callable, Any
+from typing import Dict, Callable, Any, Optional
 from pythonjsonlogger import jsonlogger
+
 
 class BaseTest(ABC):
     TEST_NAME = "BaseTest"
     CATEGORY = "general"
 
     def __init__(self, console_output: bool = False, live_cb=None):
-        self._live_cb = live_cb  # <-- for GUI output
+        self._live_cb = live_cb
         csv_path = os.environ.get(
             'SESSION_CSV',
             os.path.join(os.getcwd(), f'live_results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv')
@@ -28,8 +29,8 @@ class BaseTest(ABC):
         self.csv_writer = csv.writer(self.csv_fp)
         if first_time:
             self.csv_writer.writerow([
-                'Start','End','Test_case_name','executed_command','source_ip','source_hostname',
-                'dest_ip','dest_hostname','dest_port','Proxy','Result','comment'
+                'Start', 'End', 'Test_case_name', 'executed_command', 'source_ip', 'source_hostname',
+                'dest_ip', 'dest_hostname', 'dest_port', 'Proxy', 'Result', 'comment'
             ])
             self.csv_fp.flush()
 
@@ -47,7 +48,7 @@ class BaseTest(ABC):
     def run(self, config: Dict) -> Dict:
         pass
 
-    def execute_command(self, command: str) -> Dict[str, Any]:
+    def execute_command(self, command: str, extra_fields: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         start = datetime.utcnow().isoformat()
         t0 = time.time()
         try:
@@ -61,7 +62,8 @@ class BaseTest(ABC):
                 'return_code': proc.returncode,
                 'duration': duration,
                 'start': start,
-                'end': end
+                'end': end,
+                **(extra_fields or {})
             }
         except Exception as e:
             duration = round(time.time() - t0, 2)
@@ -72,7 +74,8 @@ class BaseTest(ABC):
                 'return_code': -1,
                 'duration': duration,
                 'start': start,
-                'end': end
+                'end': end,
+                **(extra_fields or {})
             }
 
     def log_command(self, func: Optional[Callable] = None, *, name: str = "Unnamed Command"):
@@ -82,13 +85,12 @@ class BaseTest(ABC):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             result = func(*args, **kwargs)
-            # Send live to GUI
+
             if self._live_cb:
                 stamp = result.get('end', datetime.utcnow().isoformat())
                 msg = f"[{stamp}] {self.TEST_NAME}/{name} → rc={result.get('return_code')} | {result.get('stderr') or result.get('stdout')}"
                 self._live_cb(msg)
 
-            # JSON log
             log_entry = {
                 'type': 'command', 'timestamp': result.get('end'),
                 'test_name': self.TEST_NAME, 'category': self.CATEGORY,
@@ -98,12 +100,14 @@ class BaseTest(ABC):
             }
             self.logger.info(json.dumps(log_entry))
 
-            # CSV log
             row = [
                 result.get('start'), result.get('end'), self.TEST_NAME,
-                name, self.base_fields['source_ip'], self.base_fields['source_hostname'],
-                self.base_fields['dest_ip'], self.base_fields['dest_hostname'],
-                self.base_fields['dest_port'], self.base_fields['Proxy'],
+                name, result.get('source_ip', self.base_fields['source_ip']),
+                result.get('source_hostname', self.base_fields['source_hostname']),
+                result.get('dest_ip', self.base_fields['dest_ip']),
+                result.get('dest_hostname', self.base_fields['dest_hostname']),
+                result.get('dest_port', self.base_fields['dest_port']),
+                result.get('Proxy', self.base_fields['Proxy']),
                 'success' if result.get('return_code') == 0 else 'failure',
                 result.get('stderr') or result.get('stdout')
             ]
@@ -120,12 +124,12 @@ class BaseTest(ABC):
             'End': end,
             'Test_case_name': self.TEST_NAME,
             'executed_command': result.get('executed_command', ''),
-            'source_ip': self.base_fields['source_ip'],
-            'source_hostname': self.base_fields['source_hostname'],
-            'dest_ip': result.get('dest_ip'),
-            'dest_hostname': result.get('dest_hostname'),
-            'dest_port': result.get('dest_port'),
-            'Proxy': result.get('Proxy'),
+            'source_ip': result.get('source_ip', self.base_fields['source_ip']),
+            'source_hostname': result.get('source_hostname', self.base_fields['source_hostname']),
+            'dest_ip': result.get('dest_ip', self.base_fields['dest_ip']),
+            'dest_hostname': result.get('dest_hostname', self.base_fields['dest_hostname']),
+            'dest_port': result.get('dest_port', self.base_fields['dest_port']),
+            'Proxy': result.get('Proxy', self.base_fields['Proxy']),
             'Result': result.get('status'),
             'comment': result.get('comment')
         }
@@ -166,6 +170,13 @@ class BaseTest(ABC):
         except:
             return {}
 
-    @property
-    def is_windows(self) -> bool:
-        return platform.system().lower() == 'windows'
+    def _fail_test(self, message: str) -> Dict:
+        return {
+            "status": "error",
+            "executed_command": self.TEST_NAME,
+            "comment": message,
+            "dest_ip": self.base_fields['dest_ip'],
+            "dest_port": self.base_fields['dest_port'],
+            "Proxy": self.base_fields['Proxy']
+        }
+
